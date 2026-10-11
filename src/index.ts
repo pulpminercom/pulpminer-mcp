@@ -16,9 +16,9 @@ Usage: pulpminer-mcp [--http]
   (default)   stdio transport, for Cursor / Claude Desktop / other local MCP clients
   --http      Streamable HTTP transport on http://$HOST:$PORT/mcp (default 127.0.0.1:3333)
 
-Env: PULPMINER_API_KEY, PULPMINER_SESSION_TOKEN, PULPMINER_BASE_URL, PULPMINER_TIMEOUT_MS, PORT, HOST
-In HTTP mode a client may override credentials per request with the headers
-x-pulpminer-api-key and x-pulpminer-session-token.`);
+Env: PULPMINER_API_KEY, PULPMINER_BASE_URL, PULPMINER_TIMEOUT_MS, PORT, HOST
+In HTTP mode a client may override the API key per request with the
+x-pulpminer-api-key header.`);
 	process.exit(0);
 }
 
@@ -59,9 +59,6 @@ const runHttp = async () => {
 		const config = {
 			...baseConfig,
 			apiKey: header("x-pulpminer-api-key")?.trim() || baseConfig.apiKey,
-			sessionToken:
-				header("x-pulpminer-session-token")?.trim().replace(/^Bearer\s+/i, "") ||
-				baseConfig.sessionToken,
 		};
 
 		// Stateless mode: a fresh server + transport per request.
