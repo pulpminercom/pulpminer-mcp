@@ -1,0 +1,49 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.pulpminercom/pulpminer-mcp",
+  "title": "PulpMiner",
+  "description": "Turn any public webpage into JSON with AI, save it as a live JSON API, and call it from your agent.",
+  "websiteUrl": "https://www.pulpminer.com/?utm_source=mcp_registry&utm_medium=listing&utm_campaign=mcp_launch",
+  "repository": {
+    "url": "https://github.com/pulpminercom/pulpminer-mcp",
+    "source": "github"
+  },
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "pulpminer-mcp",
+      "version": "0.1.0",
+      "runtimeHint": "npx",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "PULPMINER_API_KEY",
+          "description": "Your PulpMiner API key (PulpMiner dashboard > API Keys). The only credential the server needs.",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string"
+        },
+        {
+          "name": "PULPMINER_BASE_URL",
+          "description": "PulpMiner API base URL. Leave unset to use https://api.pulpminer.com.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "string",
+          "default": "https://api.pulpminer.com"
+        },
+        {
+          "name": "PULPMINER_TIMEOUT_MS",
+          "description": "Per-request timeout in milliseconds. Scraping plus the AI step can take a while.",
+          "isRequired": false,
+          "isSecret": false,
+          "format": "number",
+          "default": "300000"
+        }
+      ]
+    }
+  ]
+}
