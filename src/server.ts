@@ -82,7 +82,7 @@ export const createServer = (config: PulpMinerConfig) => {
 		{ name: SERVER_NAME, version: SERVER_VERSION },
 		{
 			instructions:
-				"PulpMiner turns any web page into structured JSON using AI, and can save that configuration as a reusable REST API. Typical flow: pulpminer_generate_json to preview the JSON for a URL (optionally with a jsonFormat sample) -> pulpminer_save_as_api with the jsonFormat you are happy with -> pulpminer_fetch_api_data with the returned API id. Generation and API fetches consume PulpMiner credits.",
+				"PulpMiner turns any web page into structured JSON using AI, and can save that configuration as a reusable REST API. Typical flow: pulpminer_generate_json to preview the JSON for a URL (optionally with a jsonFormat sample) -> pulpminer_save_as_api with the jsonFormat you are happy with -> pulpminer_fetch_api_data with the returned API id. All tools use the PulpMiner API key. Generation and API fetches consume PulpMiner credits.",
 		},
 	);
 
@@ -92,7 +92,7 @@ export const createServer = (config: PulpMinerConfig) => {
 		{
 			title: "Generate JSON from a web page with AI",
 			description:
-				"Scrape a web page and convert it to structured JSON with an LLM (PulpMiner POST /external/ai/json). Pass jsonFormat to force an exact output shape; omit it to let the AI infer a flat JSON. Does not save anything. Costs 0.25 credits (+0.1 with renderJs). Can take 10-60s+. Uses PULPMINER_API_KEY.",
+				"Scrape a web page and convert it to structured JSON with an LLM (PulpMiner POST /external/ai/json). Pass jsonFormat to force an exact output shape; omit it to let the AI infer a flat JSON. Does not save anything. Costs 0.25 credits (+0.1 with renderJs). Can take 10-60s+. Needs only the PulpMiner API key (PULPMINER_API_KEY).",
 			inputSchema: {
 				...commonScrapeShape,
 				jsonFormat: jsonFormatSchema.optional(),
@@ -128,7 +128,7 @@ export const createServer = (config: PulpMinerConfig) => {
 		{
 			title: "Save a page-to-JSON config as a reusable API",
 			description:
-				"Save a URL + JSON format as a PulpMiner API (POST /external/ai/json/save). Afterwards the data is available at {baseUrl}/external/{apiId} with the `apikey` header (see pulpminer_fetch_api_data). For a dynamic API, pass dynamicUrl with {{ variable }} placeholders, e.g. https://site.com/search?q={{ query }}; callers then supply those variables. Saving itself is free; each later fetch costs 0.4 credits (+0.1 with renderJs). Uses PULPMINER_API_KEY.",
+				"Save a URL + JSON format as a PulpMiner API (POST /external/ai/json/save). Afterwards the data is available at {baseUrl}/external/{apiId} with the `apikey` header (see pulpminer_fetch_api_data). For a dynamic API, pass dynamicUrl with {{ variable }} placeholders, e.g. https://site.com/search?q={{ query }}; callers then supply those variables. Saving itself is free; each later fetch costs 0.4 credits (+0.1 with renderJs). Needs only the PulpMiner API key (PULPMINER_API_KEY).",
 			inputSchema: {
 				...commonScrapeShape,
 				url: z
@@ -278,42 +278,13 @@ export const createServer = (config: PulpMinerConfig) => {
 		},
 	);
 
-	// 5. Get saved API config (session auth) ----------------------------------
-	server.registerTool(
-		"pulpminer_get_saved_api_config",
-		{
-			title: "Get a saved API's full configuration",
-			description:
-				"Return the full stored config of a saved API (GET /api/ai/json/{id}): url, jsonFormat, cache, renderJs, scraper, llm, selector, extraLLMInfo, dynamicUrl, lastFetched. Requires PULPMINER_SESSION_TOKEN (dashboard session; not available with an API key). Free.",
-			inputSchema: {
-				apiId: z.union([z.string().regex(/^\d+$/), z.number().int().positive()]).describe("Numeric API id."),
-			},
-			annotations: { readOnlyHint: true, openWorldHint: true },
-		},
-		async ({ apiId }) => {
-			try {
-				const row = await client.getSavedApiConfig(String(apiId));
-				if (row && typeof row.jsonFormat === "string") {
-					try {
-						row.jsonFormat = JSON.parse(row.jsonFormat);
-					} catch {
-						/* leave as string */
-					}
-				}
-				return ok(row);
-			} catch (err) {
-				return fail(err);
-			}
-		},
-	);
-
-	// 6. Check API key -----------------------------------------------------------
+	// 5. Check API key -----------------------------------------------------------
 	server.registerTool(
 		"pulpminer_check_api_key",
 		{
 			title: "Check PulpMiner credentials",
 			description:
-				"Verify that PULPMINER_API_KEY is valid (GET /external/n8n/auth) and report which credentials are configured. Free.",
+				"Verify that PULPMINER_API_KEY is set and valid (GET /external/n8n/auth). Free.",
 			inputSchema: {},
 			annotations: { readOnlyHint: true, openWorldHint: true },
 		},
@@ -323,8 +294,6 @@ export const createServer = (config: PulpMinerConfig) => {
 					baseUrl: client.baseUrl,
 					apiKeyConfigured: client.hasApiKey,
 					apiKeyValid: client.hasApiKey ? await client.checkApiKey() : null,
-					sessionTokenConfigured: client.hasSessionToken,
-					generationAuth: client.generationAuthMode,
 				});
 			} catch (err) {
 				return fail(err);

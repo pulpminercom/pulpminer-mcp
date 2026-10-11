@@ -16,7 +16,6 @@ An [MCP](https://modelcontextprotocol.io) server for [PulpMiner](https://pulpmin
 | `pulpminer_save_as_api` | Save URL + JSON format (+ optional dynamic URL template, cache) as an API; returns the API id and endpoint | `POST /external/ai/json/save` | free |
 | `pulpminer_fetch_api_data` | Call a saved API (GET, or POST with `variables` for dynamic APIs) | `GET/POST /external/{apiId}` | 0.4 (+0.1 renderJs) |
 | `pulpminer_list_saved_apis` | List saved APIs (id, url, dynamic URL template and its variables) | `GET /external/api/url` | free |
-| `pulpminer_get_saved_api_config` | Full stored config of one saved API (jsonFormat, llm, scraper, cache…). Needs a session token | `GET /api/ai/json/{id}` | free |
 | `pulpminer_check_api_key` | Validate the API key and show which credentials are configured | `GET /external/n8n/auth` | free |
 
 Option values match the backend: `scraper` is `scraper_1` (default) or `scraper_2`. `llm` is `llm_2` (OpenAI GPT, default), `llm_1` (Google Gemini), or `llm_3` (Groq, only if enabled for your account).
@@ -25,16 +24,9 @@ Option values match the backend: `scraper` is `scraper_1` (default) or `scraper_
 
 | Env var | Required | Description |
 |---|---|---|
-| `PULPMINER_API_KEY` | yes | Your API key from the PulpMiner dashboard → API Keys. Sent as the `apikey` header. Used by every tool except `pulpminer_get_saved_api_config`. |
-| `PULPMINER_SESSION_TOKEN` | no | A PulpMiner dashboard session JWT, sent as `Authorization: Bearer …`. Only needed for `pulpminer_get_saved_api_config`. See *Session token*. |
+| `PULPMINER_API_KEY` | yes | Your API key from the PulpMiner dashboard → API Keys. Sent as the `apikey` header. It is the only credential any tool needs. |
 | `PULPMINER_BASE_URL` | no | Default `https://api.pulpminer.com` |
 | `PULPMINER_TIMEOUT_MS` | no | Default `300000` (scraping plus the LLM step can take a while) |
-
-### Session token
-
-Everything works with just `PULPMINER_API_KEY`. Generation and save-as-API call `POST /external/ai/json` and `POST /external/ai/json/save` with your API key.
-
-`PULPMINER_SESSION_TOKEN` is optional and only needed for `pulpminer_get_saved_api_config`. Dashboard session tokens expire after about 60 seconds, so it is only practical for testing. If it is set, generation and save use the dashboard `/api/ai/json*` routes with it instead of the API key.
 
 ## Install & build
 
@@ -88,7 +80,7 @@ Before it is published, use a local build: `"command": "node", "args": ["/absolu
 
 ### Streamable HTTP clients
 
-Start with `--http` (`PORT`, `HOST` env; it binds to `127.0.0.1:3333` by default) and point the client at `http://127.0.0.1:3333/mcp`. The server is stateless. Each request can send its own credentials with the `x-pulpminer-api-key` / `x-pulpminer-session-token` headers, which override the env vars. That makes it usable as a hosted multi-user endpoint (put it behind HTTPS).
+Start with `--http` (`PORT`, `HOST` env; it binds to `127.0.0.1:3333` by default) and point the client at `http://127.0.0.1:3333/mcp`. The server is stateless. Each request can send its own API key in the `x-pulpminer-api-key` header, which overrides `PULPMINER_API_KEY`. That makes it usable as a hosted multi-user endpoint (put it behind HTTPS).
 
 ```json
 {
