@@ -1,0 +1,51 @@
+{
+  "name": "pulpminer-mcp",
+  "version": "0.1.0",
+  "description": "MCP server for PulpMiner: turn web pages into JSON with AI, save them as reusable APIs, and fetch saved API data.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pulpminercom/pulpminer-mcp.git"
+  },
+  "homepage": "https://github.com/pulpminercom/pulpminer-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/pulpminercom/pulpminer-mcp/issues"
+  },
+  "bin": {
+    "pulpminer-mcp": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "start:http": "node dist/index.js --http",
+    "test": "npm run build && node scripts/smoke-test.mjs",
+    "inspect": "npx @modelcontextprotocol/inspector node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "pulpminer",
+    "scraping",
+    "json",
+    "ai"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.6.0"
+  }
+}
