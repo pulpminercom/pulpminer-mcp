@@ -92,7 +92,7 @@ export const createServer = (config: PulpMinerConfig) => {
 		{
 			title: "Generate JSON from a web page with AI",
 			description:
-				"Scrape a web page and convert it to structured JSON with an LLM (PulpMiner POST /api/ai/json). Pass jsonFormat to force an exact output shape; omit it to let the AI infer a flat JSON. Does not save anything. Costs 0.25 credits (+0.1 with renderJs). Can take 10-60s+. Auth: PULPMINER_SESSION_TOKEN, or PULPMINER_API_KEY once the backend exposes /external/ai/json.",
+				"Scrape a web page and convert it to structured JSON with an LLM (PulpMiner POST /external/ai/json). Pass jsonFormat to force an exact output shape; omit it to let the AI infer a flat JSON. Does not save anything. Costs 0.25 credits (+0.1 with renderJs). Can take 10-60s+. Uses PULPMINER_API_KEY.",
 			inputSchema: {
 				...commonScrapeShape,
 				jsonFormat: jsonFormatSchema.optional(),
@@ -128,7 +128,7 @@ export const createServer = (config: PulpMinerConfig) => {
 		{
 			title: "Save a page-to-JSON config as a reusable API",
 			description:
-				"Save a URL + JSON format as a PulpMiner API (POST /api/ai/json/save). Afterwards the data is available at {baseUrl}/external/{apiId} with the `apikey` header (see pulpminer_fetch_api_data). For a dynamic API, pass dynamicUrl with {{ variable }} placeholders, e.g. https://site.com/search?q={{ query }}; callers then supply those variables. Saving itself is free; each later fetch costs 0.4 credits (+0.1 with renderJs). Auth: PULPMINER_SESSION_TOKEN, or PULPMINER_API_KEY once the backend exposes /external/ai/json/save.",
+				"Save a URL + JSON format as a PulpMiner API (POST /external/ai/json/save). Afterwards the data is available at {baseUrl}/external/{apiId} with the `apikey` header (see pulpminer_fetch_api_data). For a dynamic API, pass dynamicUrl with {{ variable }} placeholders, e.g. https://site.com/search?q={{ query }}; callers then supply those variables. Saving itself is free; each later fetch costs 0.4 credits (+0.1 with renderJs). Uses PULPMINER_API_KEY.",
 			inputSchema: {
 				...commonScrapeShape,
 				url: z
@@ -229,6 +229,14 @@ export const createServer = (config: PulpMinerConfig) => {
 				if (err instanceof PulpMinerError && err.status === 400 && /request is invalid/.test(err.message)) {
 					return fail(new PulpMinerError(`${err.message}. This API is dynamic: pass 'variables'.`));
 				}
+				if (err instanceof PulpMinerError && err.status === 401) {
+					return fail(
+						new PulpMinerError(
+							`${err.message}. Either PULPMINER_API_KEY is wrong, or there is no saved API with id ${apiId} under this key (see pulpminer_list_saved_apis).`,
+							401,
+						),
+					);
+				}
 				if (err instanceof PulpMinerError && err.status === 404 && /no data/.test(err.message)) {
 					return fail(new PulpMinerError(`${err.message}. This API is not dynamic: call it without 'variables'.`));
 				}
@@ -276,7 +284,7 @@ export const createServer = (config: PulpMinerConfig) => {
 		{
 			title: "Get a saved API's full configuration",
 			description:
-				"Return the full stored config of a saved API (GET /api/ai/json/{id}): url, jsonFormat, cache, renderJs, scraper, llm, selector, extraLLMInfo, dynamicUrl, lastFetched. Requires PULPMINER_SESSION_TOKEN. Free.",
+				"Return the full stored config of a saved API (GET /api/ai/json/{id}): url, jsonFormat, cache, renderJs, scraper, llm, selector, extraLLMInfo, dynamicUrl, lastFetched. Requires PULPMINER_SESSION_TOKEN (dashboard session; not available with an API key). Free.",
 			inputSchema: {
 				apiId: z.union([z.string().regex(/^\d+$/), z.number().int().positive()]).describe("Numeric API id."),
 			},

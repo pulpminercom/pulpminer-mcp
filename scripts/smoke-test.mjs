@@ -33,6 +33,8 @@ const mock = createServer(async (req, res) => {
 	if (p === "/external/7" && req.method === "GET") return send(400, { data: null, errors: [{ message: "request is invalid" }] });
 	if (p === "/external/7" && req.method === "POST") return send(200, { data: { results: [1, 2] }, errors: null });
 	if (p === "/external/8") return send(200, { data: { ok: true }, errors: null });
+	if (p === "/external/9") return send(401, { data: null, errors: [{ message: "invalid key" }] });
+	if (p === "/external/ai/json" && req.headers.apikey === "broke") return send(402, { data: null, errors: [{ message: "No credits left ⚠. Please buy more credits" }] });
 	send(404, { data: null, errors: [{ message: "not found" }] });
 });
 await new Promise((r) => mock.listen(0, "127.0.0.1", r));
@@ -100,6 +102,8 @@ async function exercise(client, label) {
 		assert.deepEqual(calls[1].body, { q: "x" });
 		r = await client.callTool({ name: "pulpminer_fetch_api_data", arguments: { apiId: "7" } });
 		assert.ok(r.isError && /pass 'variables'/.test(text(r)), text(r));
+		r = await client.callTool({ name: "pulpminer_fetch_api_data", arguments: { apiId: 9 } });
+		assert.ok(r.isError && /no saved API with id 9/.test(text(r)), text(r));
 	});
 
 	await check(`${label}: list / config / check key`, async () => {
@@ -132,9 +136,12 @@ async function exercise(client, label) {
 	await client.connect(new StdioClientTransport({ command: "node", args: ["dist/index.js"], env: noCreds, stderr: "ignore" }));
 	await check("no-creds: helpful errors", async () => {
 		let r = await client.callTool({ name: "pulpminer_generate_json", arguments: { url: "https://e.com" } });
-		assert.ok(r.isError && /PULPMINER_SESSION_TOKEN/.test(text(r)));
+		assert.ok(r.isError && /PULPMINER_API_KEY/.test(text(r)), text(r));
 		r = await client.callTool({ name: "pulpminer_fetch_api_data", arguments: { apiId: 1 } });
-		assert.ok(r.isError && /PULPMINER_API_KEY/.test(text(r)));
+		assert.ok(r.isError && /PULPMINER_API_KEY/.test(text(r)), text(r));
+		assert.ok(!/Network error/.test(text(r)), text(r));
+		r = await client.callTool({ name: "pulpminer_get_saved_api_config", arguments: { apiId: 1 } });
+		assert.ok(r.isError && /PULPMINER_SESSION_TOKEN/.test(text(r)) && !/Network error/.test(text(r)), text(r));
 	});
 	await client.close();
 }
@@ -156,6 +163,17 @@ for (const [key, label] of [["good", "apikey-only (backend unpatched)"], ["patch
 			assert.ok(!s.isError, text(s));
 			assert.match(text(s), /"apiId": 9/);
 		}
+	});
+	await client.close();
+}
+// Out of credits: 402 is surfaced with a buy-credits hint
+{
+	const client = new Client({ name: "smoke", version: "0" });
+	const { PULPMINER_SESSION_TOKEN, ...apiOnly } = env;
+	await client.connect(new StdioClientTransport({ command: "node", args: ["dist/index.js"], env: { ...apiOnly, PULPMINER_API_KEY: "broke" }, stderr: "ignore" }));
+	await check("402 out of credits", async () => {
+		const r = await client.callTool({ name: "pulpminer_generate_json", arguments: { url: "https://p.com" } });
+		assert.ok(r.isError && /402: No credits left/.test(text(r)) && /pulpminer\.com\/credits/.test(text(r)), text(r));
 	});
 	await client.close();
 }

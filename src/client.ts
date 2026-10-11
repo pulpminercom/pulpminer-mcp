@@ -59,7 +59,7 @@ export class PulpMinerClient {
 		} else {
 			if (!this.config.sessionToken) {
 				throw new PulpMinerError(
-					"This endpoint currently requires a PulpMiner dashboard session token: set PULPMINER_SESSION_TOKEN. The backend does not yet accept API keys for AI generation / save-as-API (see README, 'Auth limitations').",
+					"This endpoint only accepts a PulpMiner dashboard session token (PULPMINER_SESSION_TOKEN); it is not available with an API key. Use pulpminer_list_saved_apis for API-key access to your saved APIs.",
 				);
 			}
 			h.authorization = `Bearer ${this.config.sessionToken}`;
@@ -77,13 +77,15 @@ export class PulpMinerClient {
 		for (const [k, v] of Object.entries(opts.query ?? {})) {
 			if (v !== undefined) url.searchParams.set(k, String(v));
 		}
+		// Build headers first so missing-credential errors are not reported as network errors.
+		const headers = this.headers(mode);
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), this.config.timeoutMs);
 		let res: Response;
 		try {
 			res = await fetch(url, {
 				method,
-				headers: this.headers(mode),
+				headers,
 				body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
 				signal: controller.signal,
 			});
@@ -113,7 +115,9 @@ export class PulpMinerClient {
 				envelope?.errors?.map((e) => e.message).join("; ") ||
 				text.slice(0, 500) ||
 				res.statusText;
-			throw new PulpMinerError(`PulpMiner API ${res.status}: ${msg}`, res.status, envelope ?? text);
+			const hint =
+				res.status === 402 ? " Buy more credits at https://www.pulpminer.com/credits." : "";
+			throw new PulpMinerError(`PulpMiner API ${res.status}: ${msg}${hint}`, res.status, envelope ?? text);
 		}
 		if (!envelope) {
 			// e.g. /external/n8n/auth returns {data:null,errors:null}; anything non-JSON is unexpected
@@ -130,15 +134,15 @@ export class PulpMinerClient {
 	}
 
 	/**
-	 * Generation / save auth. With a session token: /api/ai/json* + Bearer (works today).
-	 * Otherwise with an API key: /external/ai/json* + apikey (404 until the API-key
-	 * routes are live on the backend).
+	 * Generation / save auth. With a session token: /api/ai/json* + Bearer.
+	 * Otherwise with an API key: /external/ai/json* + apikey (the normal path; live on
+	 * api.pulpminer.com since Oct 2026, a self-hosted/older backend may return 404).
 	 */
 	private genRoute(): { prefix: "/api" | "/external"; mode: AuthMode } {
 		if (this.config.sessionToken) return { prefix: "/api", mode: "session" };
 		if (this.config.apiKey) return { prefix: "/external", mode: "apikey" };
 		throw new PulpMinerError(
-			"No credentials for AI generation / save-as-API. Set PULPMINER_SESSION_TOKEN (works with the current backend) or PULPMINER_API_KEY (requires the API-key generation routes to be live on the backend).",
+			"PULPMINER_API_KEY is not set. Copy your API key from the PulpMiner dashboard (API Keys) and set it in the MCP server's env.",
 		);
 	}
 
@@ -149,7 +153,7 @@ export class PulpMinerClient {
 		} catch (err) {
 			if (mode === "apikey" && err instanceof PulpMinerError && err.status === 404) {
 				throw new PulpMinerError(
-					`${prefix + path} is not available on ${this.config.baseUrl}: this PulpMiner backend does not accept API keys for AI generation / save-as-API yet. Set PULPMINER_SESSION_TOKEN for now.`,
+					`${prefix + path} is not available on ${this.config.baseUrl}: this PulpMiner backend does not accept API keys for AI generation / save-as-API. Check PULPMINER_BASE_URL (default https://api.pulpminer.com).`,
 					404,
 				);
 			}
