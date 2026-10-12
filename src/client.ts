@@ -49,6 +49,7 @@ export class PulpMinerClient {
 			Accept: "application/json",
 			"User-Agent": "pulpminer-mcp/0.1.0",
 			apikey: this.config.apiKey,
+			"x-pulpminer-client": "pulpminer-mcp",
 		};
 	}
 
