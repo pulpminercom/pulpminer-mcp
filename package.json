@@ -1,6 +1,6 @@
 {
   "name": "pulpminer-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "mcpName": "io.github.pulpminercom/pulpminer-mcp",
   "description": "MCP server for PulpMiner: turn web pages into JSON with AI, save them as reusable APIs, and fetch saved API data.",
   "type": "module",
