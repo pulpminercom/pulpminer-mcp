@@ -203,13 +203,13 @@ export class PulpMinerClient {
 		return envelope.data;
 	}
 
-	/** GET /external/n8n/auth (apikey) - 200 if key exists, 404 otherwise. */
+	/** GET /external/n8n/auth (apikey) - 200 if key exists, 401 (or 404 on older APIs) otherwise. */
 	async checkApiKey(): Promise<boolean> {
 		try {
 			await this.request("GET", "/external/n8n/auth");
 			return true;
 		} catch (err) {
-			if (err instanceof PulpMinerError && err.status === 404) return false;
+			if (err instanceof PulpMinerError && (err.status === 404 || err.status === 401)) return false;
 			throw err;
 		}
 	}
