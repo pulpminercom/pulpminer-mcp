@@ -5,5 +5,7 @@
   "compatibility_date": "2025-09-01",
   "compatibility_flags": ["nodejs_compat"],
   "routes": [{ "pattern": "mcp.pulpminer.com", "custom_domain": true }],
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // Public Clerk publishable key (not a secret), used for OAuth metadata.
+  "vars": { "CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsucHVscG1pbmVyLmNvbSQ" }
 }
