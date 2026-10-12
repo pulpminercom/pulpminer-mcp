@@ -108,3 +108,13 @@ npm test        # builds, then runs scripts/smoke-test.mjs against a local mock 
 npm run inspect # opens the MCP Inspector UI
 npx @modelcontextprotocol/inspector --cli node dist/index.js --method tools/list
 ```
+
+## Hosted server (remote)
+
+`remote/` is a Cloudflare Worker serving the same tools over Streamable HTTP (stateless) at `https://mcp.pulpminer.com/mcp`. Send your PulpMiner API key as `Authorization: Bearer <key>` (or `x-pulpminer-api-key`); it is only forwarded to the PulpMiner API, never stored.
+
+```json
+{ "mcpServers": { "pulpminer": { "url": "https://mcp.pulpminer.com/mcp", "headers": { "Authorization": "Bearer YOUR_API_KEY" } } } }
+```
+
+Local dev: `cd remote && npm install && npm run dev` (Node 22+).
