@@ -92,7 +92,7 @@ export const createServer = (config: PulpMinerConfig) => {
 		{
 			title: "Generate JSON from a web page with AI",
 			description:
-				"Scrape a web page and convert it to structured JSON with an LLM (PulpMiner POST /external/ai/json). Pass jsonFormat to force an exact output shape; omit it to let the AI infer a flat JSON. Does not save anything. Costs 0.25 credits (+0.1 with renderJs). Can take 10-60s+. Needs only the PulpMiner API key (PULPMINER_API_KEY).",
+				"Scrape a web page and convert it to structured JSON with an LLM (PulpMiner POST /external/ai/json). Pass jsonFormat to force an exact output shape; omit it to let the AI infer a flat JSON. Does not save anything. Costs 0.25 credits (+0.1 with renderJs). Can take 10-60s+. Needs only the PulpMiner API key (PULPMINER_API_KEY locally, or `Authorization: Bearer <key>` on the hosted server).",
 			inputSchema: {
 				...commonScrapeShape,
 				jsonFormat: jsonFormatSchema.optional(),
@@ -128,7 +128,7 @@ export const createServer = (config: PulpMinerConfig) => {
 		{
 			title: "Save a page-to-JSON config as a reusable API",
 			description:
-				"Save a URL + JSON format as a PulpMiner API (POST /external/ai/json/save). Afterwards the data is available at {baseUrl}/external/{apiId} with the `apikey` header (see pulpminer_fetch_api_data). For a dynamic API, pass dynamicUrl with {{ variable }} placeholders, e.g. https://site.com/search?q={{ query }}; callers then supply those variables. Saving itself is free; each later fetch costs 0.4 credits (+0.1 with renderJs). Needs only the PulpMiner API key (PULPMINER_API_KEY).",
+				"Save a URL + JSON format as a PulpMiner API (POST /external/ai/json/save). Afterwards the data is available at {baseUrl}/external/{apiId} with the `apikey` header (see pulpminer_fetch_api_data). For a dynamic API, pass dynamicUrl with {{ variable }} placeholders, e.g. https://site.com/search?q={{ query }}; callers then supply those variables. Saving itself is free; each later fetch costs 0.4 credits (+0.1 with renderJs). Needs only the PulpMiner API key (PULPMINER_API_KEY locally, or `Authorization: Bearer <key>` on the hosted server).",
 			inputSchema: {
 				...commonScrapeShape,
 				url: z
@@ -210,7 +210,7 @@ export const createServer = (config: PulpMinerConfig) => {
 		{
 			title: "Fetch JSON from a saved PulpMiner API",
 			description:
-				"Call a saved PulpMiner API and return its JSON (GET /external/{apiId}, or POST with variables for dynamic APIs). Uses PULPMINER_API_KEY. Costs 0.4 credits (+0.1 if the API renders JS); cached APIs return fast.",
+				"Call a saved PulpMiner API and return its JSON (GET /external/{apiId}, or POST with variables for dynamic APIs). Uses the PulpMiner API key (PULPMINER_API_KEY locally, or `Authorization: Bearer <key>` on the hosted server). Costs 0.4 credits (+0.1 if the API renders JS); cached APIs return fast.",
 			inputSchema: {
 				apiId: z
 					.union([z.string().regex(/^\d+$/), z.number().int().positive()])
@@ -232,7 +232,7 @@ export const createServer = (config: PulpMinerConfig) => {
 				if (err instanceof PulpMinerError && err.status === 401) {
 					return fail(
 						new PulpMinerError(
-							`${err.message}. Either PULPMINER_API_KEY is wrong, or there is no saved API with id ${apiId} under this key (see pulpminer_list_saved_apis).`,
+							`${err.message}. Either the API key is wrong, or there is no saved API with id ${apiId} under this key (see pulpminer_list_saved_apis).`,
 							401,
 						),
 					);
@@ -251,17 +251,17 @@ export const createServer = (config: PulpMinerConfig) => {
 		{
 			title: "List saved PulpMiner APIs",
 			description:
-				"List the APIs saved under this API key (GET /external/api/url), oldest first, paginated. Returns id, url, dynamic flag and dynamicUrl template for each. Free.",
+				"List the APIs saved under this API key (GET /external/api/url), oldest first, paginated (pageSize 5-100; smaller values are raised to 5). Returns id, url, dynamic flag and dynamicUrl template for each. Free.",
 			inputSchema: {
 				page: z.number().int().min(1).default(1).describe("Page number, starting at 1."),
-				pageSize: z.number().int().min(5).max(100).default(50).describe("Items per page (5-100)."),
+				pageSize: z.number().int().min(1).max(100).default(50).describe("Items per page, 5-100 (values below 5 are raised to 5)."),
 				id: z.number().int().positive().optional().describe("Only return the API with this id."),
 			},
 			annotations: { readOnlyHint: true, openWorldHint: true },
 		},
 		async (args) => {
 			try {
-				const rows = await client.listSavedApis(args);
+				const rows = await client.listSavedApis({ ...args, pageSize: Math.max(5, args.pageSize) });
 				return ok(
 					rows.map((r) => ({
 						id: r.id,
@@ -284,7 +284,7 @@ export const createServer = (config: PulpMinerConfig) => {
 		{
 			title: "Check PulpMiner credentials",
 			description:
-				"Verify that PULPMINER_API_KEY is set and valid (GET /external/n8n/auth). Free.",
+				"Verify that a PulpMiner API key (PULPMINER_API_KEY locally, or `Authorization: Bearer <key>` on the hosted server) is set and valid (GET /external/n8n/auth). Free.",
 			inputSchema: {},
 			annotations: { readOnlyHint: true, openWorldHint: true },
 		},
