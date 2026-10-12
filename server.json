@@ -8,7 +8,7 @@
     "url": "https://github.com/pulpminercom/pulpminer-mcp",
     "source": "github"
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "packages": [
     {
       "registryType": "npm",
@@ -42,6 +42,30 @@
           "isSecret": false,
           "format": "number",
           "default": "300000"
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://mcp.pulpminer.com/mcp",
+      "headers": [
+        {
+          "name": "Authorization",
+          "description": "Your PulpMiner API key as a Bearer token: 'Bearer <PulpMiner API key>' (PulpMiner dashboard > API Keys).",
+          "isRequired": true,
+          "isSecret": true,
+          "format": "string",
+          "value": "Bearer {api_key}",
+          "variables": {
+            "api_key": {
+              "description": "Your PulpMiner API key",
+              "isRequired": true,
+              "isSecret": true,
+              "format": "string"
+            }
+          }
         }
       ]
     }
