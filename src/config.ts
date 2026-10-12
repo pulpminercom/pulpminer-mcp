@@ -18,7 +18,7 @@ const clean = (v: string | undefined) => {
 };
 
 export const loadConfig = (
-	env: NodeJS.ProcessEnv = process.env,
+	env: Record<string, string | undefined> = process.env,
 ): PulpMinerConfig => ({
 	baseUrl: (clean(env.PULPMINER_BASE_URL) ?? "https://api.pulpminer.com").replace(
 		/\/+$/,
