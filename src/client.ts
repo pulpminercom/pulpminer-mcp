@@ -41,7 +41,7 @@ export class PulpMinerClient {
 	private headers(): Record<string, string> {
 		if (!this.config.apiKey) {
 			throw new PulpMinerError(
-				"PULPMINER_API_KEY is not set. Copy your API key from the PulpMiner dashboard (API Keys) and set it in the MCP server's env.",
+				"No PulpMiner API key. Copy it from the PulpMiner dashboard (API Keys), then send it as `Authorization: Bearer <key>` (hosted server) or set PULPMINER_API_KEY in the MCP server's env (local).",
 			);
 		}
 		return {
