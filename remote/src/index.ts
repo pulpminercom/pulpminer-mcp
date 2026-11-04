@@ -7,12 +7,14 @@ import {
 	generateClerkProtectedResourceMetadata,
 } from "@clerk/mcp-tools/server";
 import { createServer, SERVER_NAME, SERVER_VERSION } from "../../src/server.js";
+import { landingHtml } from "./landing.js";
+import { type AnalyticsEnv, capture, trackRpc, userAgentOf } from "./analytics.js";
 
 const BASE_URL = "https://api.pulpminer.com";
 const TIMEOUT_MS = 300_000;
 const RESOURCE_METADATA_PATH = "/.well-known/oauth-protected-resource";
 
-type Env = { CLERK_PUBLISHABLE_KEY: string };
+type Env = AnalyticsEnv & { CLERK_PUBLISHABLE_KEY: string };
 
 const json = (status: number, body: unknown, headers: Record<string, string> = {}) =>
 	new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json", ...headers } });
@@ -62,9 +64,15 @@ const tokenIsValid = async (token: string) => {
 };
 
 export default {
-	async fetch(req: Request, env: Env): Promise<Response> {
+	async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
 		const { pathname, origin } = new URL(req.url);
 		if (pathname === "/health") return json(200, { ok: true });
+		// People who open the server in a browser get a page explaining how to connect
+		if (pathname === "/" && (req.method === "GET" || req.method === "HEAD")) {
+			return new Response(req.method === "HEAD" ? null : landingHtml, {
+				headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "public, max-age=300" },
+			});
+		}
 		if (pathname.startsWith(RESOURCE_METADATA_PATH) || pathname === "/.well-known/oauth-authorization-server") {
 			if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders });
 			const metadata =
@@ -90,8 +98,15 @@ export default {
 		}
 
 		const token = apiKeyFrom(req);
-		if (!token) return unauthorized(origin, "Sign in with PulpMiner or send your API key as `Authorization: Bearer <key>`.");
-		if (!(await tokenIsValid(token))) return unauthorized(origin, "Invalid or expired PulpMiner token.");
+		const userAgent = userAgentOf(req);
+		if (!token) {
+			ctx.waitUntil(capture(env, "mcp_auth_rejected", "mcp_anonymous", { reason: "missing_token", user_agent: userAgent }));
+			return unauthorized(origin, "Sign in with PulpMiner or send your API key as `Authorization: Bearer <key>`.");
+		}
+		if (!(await tokenIsValid(token))) {
+			ctx.waitUntil(capture(env, "mcp_auth_rejected", "mcp_anonymous", { reason: "invalid_token", user_agent: userAgent }));
+			return unauthorized(origin, "Invalid or expired PulpMiner token.");
+		}
 
 		// Forwarded unchanged; the API accepts both API keys and OAuth tokens.
 		const server = createServer({ baseUrl: BASE_URL, apiKey: token, timeoutMs: TIMEOUT_MS });
@@ -100,6 +115,10 @@ export default {
 			enableJsonResponse: true,
 		});
 		await server.connect(transport);
-		return transport.handleRequest(req);
+		const startedAt = Date.now();
+		const rpc = await req.clone().json().catch(() => null);
+		const res = await transport.handleRequest(req);
+		ctx.waitUntil(trackRpc(env, token, userAgent, rpc, res.clone(), startedAt));
+		return res;
 	},
 };

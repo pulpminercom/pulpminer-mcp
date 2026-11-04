@@ -6,6 +6,10 @@
   "compatibility_flags": ["nodejs_compat"],
   "routes": [{ "pattern": "mcp.pulpminer.com", "custom_domain": true }],
   "observability": { "enabled": true },
-  // Public Clerk publishable key (not a secret), used for OAuth metadata.
-  "vars": { "CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsucHVscG1pbmVyLmNvbSQ" }
+  // Public keys (not secrets): Clerk for OAuth metadata, PostHog for server-side events.
+  "vars": {
+    "CLERK_PUBLISHABLE_KEY": "pk_live_Y2xlcmsucHVscG1pbmVyLmNvbSQ",
+    "POSTHOG_KEY": "phc_SMgi912O0Sxd59rZUUA26zGV7VrHKGE8MmFvS897rdn",
+    "POSTHOG_HOST": "https://n.pulpminer.com"
+  }
 }
